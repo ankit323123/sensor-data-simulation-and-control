@@ -1,0 +1,242 @@
+""" PROJECT SAMPLE ROBOCON COMPETITION GUI
+ITS A PART OF THE WHOLE PROJECT BY ITSELF IT DOES CONTROL THE ROBOT SIMULATE ITS RESPONSE
+BUT REQUIRES MANNUALLY CHANGING CODE FULLPROJECT CAN'T BE SHARED
+SET THE COMPORT TO WHICH YOUR ARDUINO IS CONNECTED
+ALSO SET THE BAUD RATE
+"""
+from __future__ import print_function, division, absolute_import
+import tkinter as tk
+from tkinter import *
+from serial import Serial
+# main class
+class App(tk.Frame):
+    def __init__(self, parent, title, serialPort):
+        tk.Frame.__init__(self, parent)
+        self.serialPort = serialPort
+        self.npoints = 100
+        self.Line1 = [0 for x in range(self.npoints)]
+        self.Line2 = [0 for x in range(self.npoints)]
+        self.Line3 = [0 for x in range(self.npoints)]
+        self.Line4 = [0 for x in range(self.npoints)]
+        self.Line5 = [0 for x in range(self.npoints)]
+        self.Line6 = [0 for x in range(self.npoints)]
+        parent.wm_title(title)
+        parent.wm_geometry("1000x600")
+
+
+        self.fright = tk.Frame(parent, bd=5, bg='white')
+        self.fright.pack(side=LEFT)
+        self.ftop = tk.Frame(parent, bd=5, bg='white')
+        self.ftop.pack(side=TOP)
+
+        self.fright1 = tk.Frame(self.fright, bd=5, bg='white')
+        self.fright1.pack(side=TOP)
+        self.fright2 = tk.Frame(self.fright, bd=5, bg='white')
+        self.fright2.pack(side=TOP)
+        self.fright3 = tk.Frame(self.fright, bd=5, bg='white')
+        self.fright3.pack(side=TOP)
+        """ploting first graph graph"""
+        self.canvas = tk.Canvas(self, background="white")
+        self.canvas.bind("<Configure>", self.on_resize)
+        self.canvas.create_line((0, 0, 0, 0), tag='X', fill='darkblue', width=1)
+        self.canvas.create_line((0, 0, 0, 0), tag='Y', fill='darkred', width=1)
+        self.canvas.create_line((0, 0, 0, 0), tag='Z', fill='black', width=1)
+        self.canvas.create_line((0, 0, 0, 0), tag='h', fill='grey', width=1)
+        self.canvas.create_line((0, 0, 0, 0), tag='k', fill='grey', width=1)
+        self.canvas.create_line((0, 0, 0, 0), tag='l', fill='grey', width=1)
+        self.canvas.create_text(30, 82, text='y=100', font=('verdana', 10, 'bold'))
+        self.canvas.create_text(30, 128, text='y=50', font=('verdana', 10, 'bold'))
+        self.canvas.create_text(30, 37, text='y=150', font=('verdana', 10, 'bold'))
+        self.canvas.pack(side=RIGHT)
+
+
+        self.lb1 = tk.Label(self.fright1, text="kp: ")
+        self.lb1.pack(side=LEFT)
+
+        """placing slidere for controling control values"""
+
+        # .....................first slider ............
+        self.slider_1 = tk.Scale(self.fright1, orient=HORIZONTAL, length=300, width=20, sliderlength=35, from_=0, to=1,
+                                 resolution=0.01,
+                                 tickinterval=0.1,command=self.slider_1value)
+        self.slider_1.pack(side=RIGHT)
+        self.lb2 = tk.Label(self.fright2, text="ki: ")
+        self.lb2.pack(side=LEFT)
+
+        # .....................SEC slider ............
+        self.slider_2 = tk.Scale(self.fright2, orient=HORIZONTAL, length=300, width=20, sliderlength=35, from_=0, to=1,
+                                 resolution=0.01,
+                                 tickinterval=0.1,command=self.slider_2value)
+        self.slider_2.pack(side=BOTTOM)
+
+        self.lb3 = tk.Label(self.fright3, text="kd: ")
+        self.lb3.pack(side=LEFT)
+
+        # .....................THIRD slider ............
+        self.slider_3 = tk.Scale(self.fright3, orient=HORIZONTAL, length=300, width=20, sliderlength=35, from_=0, to=1,
+                                 resolution=0.01,
+                                 tickinterval=0.1,command=self.slider_3value)
+        self.slider_3.pack(side=BOTTOM)
+        """"placing buttons for executing commands"""
+
+
+        self.bm1 = Button(self.ftop, text="M1", command=self.m1, width=10)
+        self.bm1.grid(row=1, column=0, columnspan=1)
+        self.bm1 = Button(self.ftop, text="M2", command=self.m2, width=10)
+        self.bm1.grid(row=2, column=0, columnspan=1)
+        self.bm1 = Button(self.ftop, text="M3", command=self.m3, width=10)
+        self.bm1.grid(row=3, column=0)
+        self.bm1 = Button(self.ftop, text="M4", command=self.m4, width=10)
+        self.bm1.grid(row=4, column=0, )
+        self.bm1 = Button(self.ftop, text="M5", command=self.m5, width=10)
+        self.bm1.grid(row=5, column=0)
+        self.bm1 = Button(self.ftop, text="START/STOP",bg='red', command=self.m5, width=10)
+        self.bm1.grid(row=6, column=0)
+
+
+
+
+
+
+
+
+
+        self.pack()
+
+
+        print("done App")
+
+    def on_resize(self, event):
+        self.replot()
+
+    def read_serial(self):
+        """
+        Check for input from the serial port. On fetching a line, parse
+        the sensor values and append to the stored data and post a replot
+        request.
+        """
+
+        if self.serialPort.inWaiting() != 1:
+
+
+            line = str(self.serialPort.readline().decode("ascii").replace("\n", "").replace("\r", "")).strip().split()
+            self.serialPort.reset_input_buffer()
+
+            try:
+
+                x, y, z = line[0], line[1], line[2]
+
+                self.append_values(x, y, z,50,100,150)
+                self.after_idle(self.replot)
+            except Exception as e:
+                print(e)
+
+        self.after(10, self.read_serial)
+
+    def append_values(self, x, y, z,h,k,l):
+        """
+        Update the cached data lists with new sensor values.
+        """
+        self.Line1.append(float(x))
+        self.Line1 = self.Line1[-1 * self.npoints:]
+        self.Line2.append(float(y))
+        self.Line2 = self.Line2[-1 * self.npoints:]
+        self.Line3.append(float(z))
+        self.Line3 = self.Line3[-1 * self.npoints:]
+        self.Line4.append(float(h))
+        self.Line4 = self.Line4[-1 * self.npoints:]
+        self.Line5.append(float(k))
+        self.Line5 = self.Line5[-1 * self.npoints:]
+        self.Line6.append(float(l))
+        self.Line6 = self.Line6[-1 * self.npoints:]
+        return
+
+    """slider values are sent to the arduino 
+    the messages are encoded before sending"""
+    def slider_1value(self,val):
+        print("kp")
+        a=self.slider_1.get()
+        y="p"+str(a);
+        self.serialPort.write(y.encode('ascii '))
+
+    def slider_2value(self,val):
+        print("ki")
+        a = self.slider_2.get()
+        y = "i" + str(a);
+        self.serialPort.write(y.encode('ascii '))
+    def slider_3value(self,val):
+        print("kd")
+        a = self.slider_3.get()
+        y = "d" + str(a);
+        self.serialPort.write(y.encode('ascii '))
+
+    def m1(self):
+        print("m1")
+        y = str(1)
+        self.serialPort.write(y.encode('ascii '))
+    def m2(self):
+        print("m2")
+        y = str(2)
+        self.serialPort.write(y.encode('ascii '))
+    def m3(self):
+        print("m3")
+        y=str(3)
+        self.serialPort.write(y.encode('ascii '))
+    def m4(self):
+        print("m4")
+        y = str(4)
+        self.serialPort.write(y.encode('ascii '))
+    def m5(self):
+        print("m5")
+        y = str(5)
+        self.serialPort.write(y.encode('ascii '))
+
+    def replot(self):
+        """
+        Update the canvas graph lines from the cached data lists.
+        The lines are scaled to match the canvas size as the window may
+        be resized by the user.
+        """
+        w = self.winfo_width()
+        h = self.winfo_height()
+        max_X = max(self.Line1) + 1e-5
+        max_Y = max(self.Line2) + 1e-5
+        max_Z = max(self.Line3) + 1e-5
+        max_all = 300
+        coordsX, coordsY, coordsZ ,coordsn , coordsk, coordsl= [], [], [], [], [], []
+        for n in range(0, self.npoints):
+            x = (w * n) / self.npoints
+            coordsX.append(x)
+            coordsX.append(h - ((h * (self.Line1[n]+100)) / max_all))
+            coordsY.append(x)
+            coordsY.append(h - ((h * (self.Line2[n]+100)) / max_all))
+            coordsZ.append(x)
+            coordsZ.append(h - ((h * (self.Line3[n] + 100)) / max_all))
+            coordsn.append(x)
+            coordsn.append(h - ((h * (self.Line4[n] + 100)) / max_all))
+            coordsk.append(x)
+            coordsk.append(h - ((h * (self.Line5[n] + 100)) / max_all))
+            coordsl.append(x)
+            coordsl.append(h - ((h * (self.Line6[n] + 100)) / max_all))
+        self.canvas.coords('X', *coordsX)
+        self.canvas.coords('Y', *coordsY)
+        self.canvas.coords('Z', *coordsZ)
+        self.canvas.coords('h', *coordsn)
+        self.canvas.coords('k', *coordsk)
+        self.canvas.coords('l', *coordsl)
+
+
+
+
+def main():
+    """creatng mainwindow and initialising initial parameter for serial communication
+    SET COMPORT AND BAUD RATE HERE"""
+    port,baudrate = 'COM11', 9600
+    root = tk.Tk()
+    app = App(root, "Serial Interface", Serial(port, baudrate))
+    app.read_serial()
+    app.mainloop()
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
